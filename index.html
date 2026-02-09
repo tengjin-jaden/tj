@@ -1,0 +1,2920 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>日程表</title>
+  <style>
+    :root {
+      --bg-1: #f7f4ef;
+      --bg-2: #e9eef5;
+      --ink: #1e1f24;
+      --muted: #6a6f7a;
+      --brand: #2f6dff;
+      --accent: #ff7a59;
+      --good: #2bb673;
+      --warn: #ff8a00;
+      --high: #e34132;
+      --card: #ffffffcc;
+      --line: #e6e1d9;
+      --shadow: 0 20px 60px rgba(31, 39, 56, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: radial-gradient(1200px 500px at 10% -10%, #ffe9d1 0%, transparent 60%),
+                  radial-gradient(900px 600px at 100% 0%, #d8e6ff 0%, transparent 60%),
+                  linear-gradient(160deg, var(--bg-1), var(--bg-2));
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans SC", sans-serif;
+      min-height: 100vh;
+    }
+
+    .app {
+      max-width: 1200px;
+      margin: 32px auto 64px;
+      padding: 0 20px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .tabs {
+      display: inline-flex;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px;
+      gap: 6px;
+      box-shadow: var(--shadow);
+    }
+
+    .tab {
+      border: 0;
+      background: transparent;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 14px;
+      cursor: pointer;
+      color: var(--muted);
+    }
+
+    .tab.active {
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .view {
+      display: none;
+      animation: fadeIn 280ms ease;
+    }
+
+    .view.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .grid.day {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .panel h3 {
+      margin: 0 0 14px;
+      font-size: 18px;
+    }
+
+    .calendar-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .month-nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: #fff;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+
+    .today-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--ink);
+      color: #fff;
+      border: 0;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .select {
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 6px 10px;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+
+    .weekday {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .day {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 8px;
+      min-height: 64px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .day.inactive {
+      opacity: 0.35;
+    }
+
+    .day .num {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .day .festival-labels {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      bottom: 6px;
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      font-size: 10px;
+      color: #9aa0a6;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .day .todo-dot {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      opacity: 0.9;
+    }
+
+    .day .todo-dot.done {
+      background: #b8bcc4;
+      opacity: 0.85;
+    }
+
+    .day-tag {
+      position: absolute;
+      right: 6px;
+      top: 6px;
+      font-size: 10px;
+      padding: 2px 4px;
+      border-radius: 6px;
+      line-height: 1;
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+
+    .day-tag.off {
+      color: #2bb673;
+      border-color: rgba(43, 182, 115, 0.35);
+    }
+
+    .day-tag.work {
+      color: #e34132;
+      border-color: rgba(227, 65, 50, 0.35);
+    }
+
+    .day.today .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--brand);
+      color: #fff;
+    }
+
+    .day.selected {
+      outline: 2px solid var(--accent);
+    }
+
+    .todo-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .todo-add {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .todo-add input {
+      flex: 1;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+
+    .todo-add button {
+      border: 0;
+      background: var(--ink);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+
+    .todo-list {
+      margin-top: 14px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .todo-item {
+      border: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 0;
+      background: #fff;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      transition: transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    .todo-item:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 24px rgba(47, 109, 255, 0.12), 0 0 0 1px rgba(47, 109, 255, 0.12);
+    }
+
+    .todo-item.focused {
+      box-shadow: 0 18px 40px rgba(47, 109, 255, 0.28), 0 0 0 1px rgba(47, 109, 255, 0.28);
+      border-color: rgba(47, 109, 255, 0.55);
+      background: linear-gradient(0deg, rgba(47, 109, 255, 0.06), rgba(47, 109, 255, 0.02));
+      animation: focusPulse 420ms ease;
+    }
+
+    .todo-item.focused:hover {
+      box-shadow: 0 18px 40px rgba(47, 109, 255, 0.32), 0 0 0 1px rgba(47, 109, 255, 0.32);
+    }
+
+    .todo-item:hover {
+      box-shadow: 0 12px 28px rgba(47, 109, 255, 0.18), 0 0 0 1px rgba(47, 109, 255, 0.22);
+      border-color: rgba(47, 109, 255, 0.35);
+    }
+
+    .todo-item.dragging {
+      opacity: 0.45;
+      transform: scale(1.005);
+      box-shadow: 0 10px 22px rgba(31, 39, 56, 0.12);
+      position: relative;
+      z-index: 3;
+    }
+
+    .todo-item.dragging .todo-content {
+      background: rgba(255, 255, 255, 0.35);
+    }
+
+    .todo-item.drag-ready {
+      transform: scale(1.025);
+      box-shadow: 0 22px 44px rgba(47, 109, 255, 0.22), 0 0 0 2px rgba(47, 109, 255, 0.24);
+    }
+
+    .todo-item.animating {
+      transition: transform 100000ms linear;
+    }
+
+    .swipe-row {
+      display: flex;
+      width: calc(100% + var(--swipe-width, 120px));
+      align-items: stretch;
+      flex: 1;
+      transform: translateX(0);
+      transition: transform 220ms cubic-bezier(0.2, 0.9, 0.2, 1.1);
+    }
+
+    .todo-item.swipe-open .swipe-row {
+      transform: translateX(calc(-1 * var(--swipe-width, 120px)));
+    }
+
+    .todo-content {
+      flex: 0 0 100%;
+      background: #fff;
+      padding: 8px 10px 10px;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .todo-item.compact .todo-content {
+      padding-bottom: 6px;
+    }
+
+    .todo-item.compact .todo-footer {
+      margin-top: 2px;
+    }
+
+    .swipe-actions {
+      flex: 0 0 var(--swipe-width, 120px);
+      height: 100%;
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      padding: 0;
+      justify-content: flex-end;
+      align-self: stretch;
+    }
+
+    .swipe-btn {
+      border: 0;
+      color: #fff;
+      height: 100%;
+      flex: 1;
+      border-radius: 0;
+      cursor: pointer;
+      font-size: 12px;
+      min-width: 0;
+    }
+
+    .swipe-btn.delete { background: #e34132; }
+    .swipe-btn.cancel { background: #f0f2f6; color: #5f6672; }
+
+    .swipe-live { transition: none !important; }
+    .swipe-release { transition: transform 420ms cubic-bezier(0.18, 1.05, 0.22, 1); }
+
+    .todo-main {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+      position: relative;
+    }
+
+
+    .todo-main .todo-check {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--line);
+      border-radius: 4px;
+      appearance: none;
+      -webkit-appearance: none;
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .todo-main .todo-check:checked::after {
+      content: "✓";
+      font-size: 10px;
+      color: #fff;
+    }
+
+    .todo-main .todo-check:checked {
+      background: #b8bcc6;
+      border-color: #b8bcc6;
+    }
+
+    .todo-footer {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 6px;
+    }
+
+    .priority-bar {
+      width: 6px;
+      height: 22px;
+      border-radius: 99px;
+      background: transparent;
+      flex: none;
+      display: none;
+    }
+
+    .todo-title {
+      font-weight: 600;
+      flex: 1;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .todo-title-text {
+      min-width: 0;
+    }
+
+    .todo-inline-detail {
+      font-size: 12px;
+      color: #b8bcc4;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 66%;
+    }
+
+    .drag-handle {
+      color: #a5a9b3;
+      font-size: 16px;
+      line-height: 1;
+      cursor: grab;
+      user-select: none;
+      margin-left: auto;
+      padding: 4px 6px;
+      border-radius: 8px;
+      transition: color 120ms ease, transform 120ms ease;
+    }
+
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .drag-handle:hover {
+      color: var(--brand);
+      transform: translateY(-1px);
+    }
+
+    .expand-btn:hover {
+      color: var(--brand) !important;
+    }
+
+    .expand-btn {
+      font-size: 16px;
+      letter-spacing: -1px;
+    }
+
+    .context-menu {
+      position: fixed;
+      z-index: 9999;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: 0 12px 30px rgba(31, 39, 56, 0.12);
+      padding: 6px;
+      min-width: 100px;
+      display: none;
+    }
+
+    .context-menu button {
+      width: 100%;
+      border: 0;
+      background: #e34132;
+      color: #fff;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .subtask-menu {
+      position: fixed;
+      z-index: 9999;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: 0 12px 30px rgba(31, 39, 56, 0.12);
+      padding: 6px;
+      min-width: 100px;
+      display: none;
+    }
+
+    .subtask-menu button {
+      width: 100%;
+      border: 0;
+      background: #e34132;
+      color: #fff;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .todo-title.done {
+      color: #9aa0a6;
+      text-decoration: line-through;
+    }
+
+
+    .checkbox-pop {
+      animation: pop 220ms ease;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.35); }
+      100% { transform: scale(1); }
+    }
+
+    .todo-item.done-anim {
+      box-shadow: 0 12px 28px rgba(47, 109, 255, 0.18);
+      transition: box-shadow 600ms ease;
+    }
+
+    .todo-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-left: 40px;
+      margin-top: 6px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .empty-state {
+      padding: 18px;
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 13px;
+      background: #fff;
+    }
+
+    .sub-preview {
+      display: grid;
+      gap: 4px;
+    }
+
+    .sub-preview-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sub-preview-item.done span {
+      text-decoration: line-through;
+      color: #9aa0a6;
+    }
+
+    .todo-details {
+      margin-top: 10px;
+      display: none;
+      animation: fadeIn 200ms ease;
+    }
+
+    .todo-item.expanded .todo-details { display: block; }
+
+    .detail-editor {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: #fff;
+      resize: vertical;
+      overflow: auto;
+      min-height: 70px;
+    }
+
+    .detail-editor .detail-edit {
+      border: 0;
+      padding: 0;
+      min-height: 24px;
+      resize: none;
+      outline: none;
+      background: transparent;
+      overflow: hidden;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .detail-editor img {
+      display: block;
+      margin: 6px 0;
+      width: 160px;
+      height: auto;
+      object-fit: contain;
+      border-radius: 10px;
+      border: 1px solid #e6eaf2;
+    }
+
+    .detail-editor img.clickable {
+      cursor: zoom-in;
+    }
+
+    .img-viewer {
+      position: fixed;
+      inset: 0;
+      background: rgba(16, 18, 24, 0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease;
+    }
+
+    .img-viewer.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .img-viewer img {
+      max-width: 88vw;
+      max-height: 80vh;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: #fff;
+      cursor: zoom-out;
+    }
+
+    .detail-menu {
+      position: fixed;
+      z-index: 9999;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: 0 12px 30px rgba(31, 39, 56, 0.12);
+      padding: 6px;
+      min-width: 120px;
+      display: none;
+    }
+
+    .detail-menu button {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: #2d3139;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    .detail-menu button:hover {
+      background: #f3f5f9;
+    }
+
+    @keyframes focusPulse {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+      100% { transform: translateY(0); }
+    }
+
+    .detail-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      font-size: 12px;
+      color: var(--muted);
+      background: #f4f2ee;
+      padding: 4px 8px;
+      border-radius: 999px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 70px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    .subtask-input {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .subtask-input input {
+      flex: 1;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+
+    .subtasks {
+      margin-top: 4px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .subtask {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .subtask.done span {
+      text-decoration: line-through;
+      color: #9aa0a6;
+    }
+
+    .subtask {
+      padding: 0;
+      border-radius: 8px;
+      cursor: grab;
+      transition: background 140ms ease, box-shadow 140ms ease, transform 240ms cubic-bezier(0.2, 0.9, 0.2, 1.2);
+    }
+
+    .subtask:hover {
+      background: #edf2ff;
+      box-shadow: inset 0 0 0 1px rgba(47, 109, 255, 0.18);
+    }
+
+    .subtask.dragging {
+      opacity: 0.45;
+      transform: scale(1.02);
+      box-shadow: 0 10px 18px rgba(31, 39, 56, 0.14);
+      position: relative;
+      z-index: 3;
+    }
+
+    .subtask.drag-ready .subtask-content {
+      background: #eaf1ff;
+      box-shadow: inset 0 0 0 2px rgba(47, 109, 255, 0.26), 0 8px 18px rgba(47, 109, 255, 0.18);
+      transform: scale(1.04);
+    }
+
+    .subtask.animating {
+      transition: transform 100000ms linear;
+    }
+
+    body.dragging {
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body.dragging .todo-list,
+    body.dragging .todo-list *,
+    body.dragging .subtasks,
+    body.dragging .subtasks * {
+      user-select: none !important;
+      -webkit-user-select: none !important;
+    }
+
+    .drag-ghost {
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 9999;
+      pointer-events: none;
+      transform: translate3d(0, 0, 0);
+      opacity: 0.92;
+      transform: translate3d(0, 0, 0) scale(1.02);
+      box-shadow: 0 28px 52px rgba(31, 39, 56, 0.28), 0 0 0 1px rgba(47, 109, 255, 0.22);
+    }
+
+    .subtask-handle {
+      margin-left: auto;
+      color: #a5a9b3;
+      font-size: 12px;
+      user-select: none;
+      transition: color 120ms ease, transform 120ms ease;
+    }
+
+    .subtask-handle:hover {
+      color: var(--brand);
+      transform: translateY(-1px);
+    }
+
+    .subtask-row {
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      width: 100%;
+      align-items: stretch;
+      min-height: 32px;
+    }
+
+    .subtask-swipe {
+      display: flex;
+      width: calc(100% + var(--sub-swipe-width, 100px));
+      align-items: stretch;
+      flex: 1;
+      transform: translateX(0);
+      transition: transform 220ms cubic-bezier(0.2, 0.9, 0.2, 1.1);
+    }
+
+    .subtask-row.swipe-open .subtask-swipe {
+      transform: translateX(calc(-1 * var(--sub-swipe-width, 100px)));
+    }
+
+    .subtask-content {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 100%;
+      background: #fff;
+      padding: 4px 6px;
+      height: 100%;
+      min-height: 32px;
+      border-radius: 8px;
+      transition: background 140ms ease, box-shadow 140ms ease;
+    }
+
+    .subtask-check {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--line);
+      border-radius: 4px;
+      appearance: none;
+      -webkit-appearance: none;
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .subtask-check:checked {
+      background: #b8bcc6;
+      border-color: #b8bcc6;
+    }
+
+    .subtask-check:checked::after {
+      content: "✓";
+      font-size: 9px;
+      color: #fff;
+    }
+
+    .subtask:hover .subtask-content {
+      background: #edf2ff;
+      box-shadow: inset 0 0 0 1px rgba(47, 109, 255, 0.18);
+    }
+
+    .subtask-actions {
+      flex: 0 0 var(--sub-swipe-width, 100px);
+      height: 100%;
+      display: flex;
+      gap: 0;
+      align-items: stretch;
+      padding: 0;
+      justify-content: flex-end;
+    }
+
+    .more-btn {
+      border: 0;
+      background: transparent;
+      color: #9aa0a6;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0 6px;
+      line-height: 1;
+      transition: color 120ms ease, transform 120ms ease;
+      margin-left: auto;
+    }
+
+    .more-btn:hover {
+      color: var(--brand);
+      transform: translateY(-1px);
+    }
+
+    .top-action {
+      border: 0;
+      background: #f3f5f9;
+      color: #5f6672;
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+    }
+
+    .top-action:hover {
+      background: #e7edff;
+      color: var(--brand);
+      transform: translateY(-1px);
+    }
+
+    .priority-tag {
+      margin-left: 4px;
+      font-size: 10px;
+      color: #8b93a1;
+    }
+
+    .top-action.color {
+      font-size: 14px;
+      padding: 2px 8px;
+    }
+
+    .color-pop {
+      position: fixed;
+      left: 0;
+      top: 0;
+      display: grid;
+      grid-template-columns: repeat(8, 20px);
+      gap: 8px;
+      padding: 8px 10px;
+      background: #fff;
+      border: 1px solid #e6eaf2;
+      box-shadow: 0 10px 24px rgba(31, 39, 56, 0.12);
+      border-radius: 12px;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+      transform: translateY(6px);
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .color-pop.show {
+      opacity: 1;
+      pointer-events: auto;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .color-swatch {
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      cursor: pointer;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      padding: 0;
+      outline: none;
+    }
+
+    .view-switch {
+      display: inline-flex;
+      gap: 6px;
+      background: #fff;
+      border: 1px solid var(--line);
+      padding: 6px;
+      border-radius: 999px;
+    }
+
+    .view-switch button {
+      border: 0;
+      background: transparent;
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      color: var(--muted);
+    }
+
+    .view-switch button.active {
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .summary-head {
+      align-items: center;
+    }
+
+    .summary-title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .summary-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .summary-nav {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .summary-nav .today-btn {
+      width: auto;
+      height: 32px;
+      border-radius: 999px;
+      padding: 0 12px;
+      font-size: 13px;
+    }
+
+    .summary-calendar {
+      display: grid;
+      gap: 8px;
+    }
+
+    .summary-weekdays,
+    .summary-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+
+    .summary-weekday {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      padding: 6px 0;
+    }
+
+    .summary-cell {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 8px;
+      min-height: 110px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .summary-cell.inactive {
+      opacity: 0.4;
+    }
+
+    .summary-date {
+      font-size: 12px;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .summary-date .num {
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .summary-cell.today .summary-date .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--brand);
+      color: #fff;
+    }
+
+    .summary-tasks {
+      display: grid;
+      gap: 4px;
+      font-size: 12px;
+    }
+
+    .summary-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px;
+      border-radius: 8px;
+      background: #f4f2ee;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .summary-pill .box {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      border: 1px solid rgba(0,0,0,0.1);
+      background: #fff;
+      flex: none;
+    }
+
+    .summary-pill.done {
+      color: #9aa0a6;
+      text-decoration: line-through;
+    }
+
+    .summary-festivals {
+      margin-top: auto;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 4px;
+      font-size: 10px;
+      color: #9aa0a6;
+    }
+
+    .note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+
+    @media (max-width: 980px) {
+      .grid.day { grid-template-columns: 1fr; }
+      .todo-meta { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="title">日程表</div>
+      <div class="tabs">
+        <button class="tab active" data-tab="day">DAY TODO</button>
+        <button class="tab" data-tab="summary">月/周视图</button>
+      </div>
+    </header>
+
+    <section class="view active" id="view-day">
+      <div class="grid day">
+        <div class="panel">
+          <div class="calendar-head">
+            <div class="month-nav">
+              <button class="nav-btn" id="prev-month">◀</button>
+              <button class="nav-btn" id="next-month">▶</button>
+            </div>
+            <div>
+              <select class="select" id="year-select"></select>
+              <select class="select" id="month-select"></select>
+            </div>
+            <button class="today-btn" id="go-today">今日</button>
+          </div>
+          <div class="calendar" id="calendar-weekdays"></div>
+          <div class="calendar" id="calendar-days"></div>
+        </div>
+
+        <div class="panel">
+          <div class="todo-header">
+            <h3 id="todo-title">待办事项</h3>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button id="clear-completed" class="tag" style="cursor:pointer;">清理已完成</button>
+              <span class="tag" id="todo-date"></span>
+            </div>
+          </div>
+          <div class="todo-add">
+            <input id="todo-input" type="text" placeholder="添加待办事项" />
+            <button id="todo-add-btn">添加</button>
+          </div>
+          <div class="todo-list" id="todo-list"></div>
+          <div class="note">提示：点击事项条可展开编辑详情、子事项与颜色。完成后可手动收起。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-summary">
+      <div class="panel">
+        <div class="todo-header summary-head">
+          <div class="summary-title" id="summary-title">月/周视图</div>
+          <div class="summary-controls">
+            <div class="summary-nav">
+              <button class="nav-btn" id="summary-prev">◀</button>
+              <button class="nav-btn" id="summary-next">▶</button>
+              <button class="today-btn" id="summary-today">今天</button>
+            </div>
+            <div class="view-switch">
+              <button id="summary-month" class="active">月视图</button>
+              <button id="summary-week">周视图</button>
+            </div>
+          </div>
+        </div>
+        <div class="summary-calendar">
+          <div class="summary-weekdays" id="summary-weekdays"></div>
+          <div class="summary-days" id="summary-days"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const weekdayLabels = ["一", "二", "三", "四", "五", "六", "日"];
+    const monthLabels = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
+    const storeKey = "vb-schedule-data-v1";
+
+    const $ = (id) => document.getElementById(id);
+    const state = {
+      viewDate: new Date(),
+      selectedDate: new Date(),
+      mode: "month",
+      data: {}
+    };
+
+    let colorPopEl = null;
+    let colorInputEl = null;
+    let activeColorTodoId = null;
+    const colorPalette = ["none", "#E74C3C", "#F39C12", "#F1C40F", "#2ECC71", "#3498DB", "#8E71D6", "custom"];
+
+    let detailMenuEl = null;
+    let detailMenuTarget = null;
+    let detailMenuTodoId = null;
+    let detailMenuImageIndex = null;
+    let detailMenuTextarea = null;
+    let imgViewer = null;
+
+    const holidayRulesByYear = {
+      "2026": {
+        off: [
+          { name: "元旦", range: [1, 1, 3] },
+          { name: "春节", range: [2, 15, 23] },
+          { name: "清明", range: [4, 4, 6] },
+          { name: "劳动节", range: [5, 1, 5] },
+          { name: "端午", range: [6, 19, 21] },
+          { name: "中秋", range: [9, 25, 27] },
+          { name: "国庆", range: [10, 1, 7] }
+        ],
+        work: [
+          [1, 4],
+          [2, 14],
+          [2, 28],
+          [5, 9],
+          [9, 20],
+          [10, 10]
+        ]
+      }
+    };
+
+    const customSpecialDays = {
+      // "2025-10-01": "off",
+      // "2025-10-11": "work"
+    };
+
+    function pad2(n) {
+      return String(n).padStart(2, "0");
+    }
+
+    function buildSpecialDays() {
+      const map = { ...customSpecialDays };
+      Object.entries(holidayRulesByYear).forEach(([year, rules]) => {
+        const y = parseInt(year, 10);
+        (rules.off || []).forEach((item) => {
+          const [m, s, e] = item.range;
+          for (let d = s; d <= e; d++) {
+            map[`${y}-${pad2(m)}-${pad2(d)}`] = "off";
+          }
+        });
+        (rules.work || []).forEach(([m, d]) => {
+          map[`${y}-${pad2(m)}-${pad2(d)}`] = "work";
+        });
+      });
+      return map;
+    }
+
+    const specialDays = buildSpecialDays();
+
+    function buildHolidayNameMap() {
+      const map = {};
+      Object.entries(holidayRulesByYear).forEach(([year, rules]) => {
+        const y = parseInt(year, 10);
+        (rules.off || []).forEach((item) => {
+          const [m, s] = item.range;
+          map[`${y}-${pad2(m)}-${pad2(s)}`] = item.name;
+        });
+      });
+      return map;
+    }
+
+    const holidayNameByDate = buildHolidayNameMap();
+
+    function getHolidayLabel(date) {
+      return holidayNameByDate[dateKey(date)] || "";
+    }
+
+    function dateKey(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function loadData() {
+      try {
+        const raw = localStorage.getItem(storeKey);
+        state.data = raw ? JSON.parse(raw) : {};
+      } catch (err) {
+        state.data = {};
+      }
+    }
+
+    function saveData() {
+      localStorage.setItem(storeKey, JSON.stringify(state.data));
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function insertNodeAtCursor(container, node) {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) {
+        container.appendChild(node);
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(node);
+      range.setStartAfter(node);
+      range.setEndAfter(node);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+
+    function ensureColorPop() {
+      if (colorPopEl && colorInputEl) return;
+      colorPopEl = document.createElement("div");
+      colorPopEl.className = "color-pop";
+      colorPopEl.addEventListener("click", (e) => e.stopPropagation());
+      colorPopEl.addEventListener("pointerdown", (e) => e.stopPropagation());
+
+      colorInputEl = document.createElement("input");
+      colorInputEl.type = "color";
+      colorInputEl.style.position = "fixed";
+      colorInputEl.style.opacity = "0";
+      colorInputEl.style.pointerEvents = "none";
+      colorInputEl.style.width = "0";
+      colorInputEl.style.height = "0";
+      document.body.appendChild(colorInputEl);
+
+      colorPalette.forEach((val) => {
+        const sw = document.createElement("button");
+        sw.type = "button";
+        sw.className = "color-swatch";
+        if (val === "none") {
+          sw.style.background = "transparent";
+          sw.style.border = "1px dashed #c7ccd6";
+          sw.setAttribute("aria-label", "无色");
+        } else if (val === "custom") {
+          sw.style.background = "#f3f5f9";
+          sw.textContent = "✎";
+          sw.style.fontSize = "10px";
+          sw.style.color = "#5f6672";
+          sw.setAttribute("aria-label", "自定义");
+        } else {
+          sw.style.background = val;
+          sw.setAttribute("aria-label", val);
+        }
+        sw.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (val === "custom") {
+            colorInputEl.click();
+            return;
+          }
+          const todos = getTodos(state.selectedDate);
+          const t = todos.find((x) => String(x.id) === String(activeColorTodoId));
+          if (t) {
+            t.color = val === "none" ? "" : val;
+            saveData();
+            renderTodos();
+            scheduleSummaryRender();
+            colorPopEl.classList.remove("show");
+          }
+        });
+        colorPopEl.appendChild(sw);
+      });
+
+      colorInputEl.addEventListener("input", (e) => {
+        const todos = getTodos(state.selectedDate);
+        const t = todos.find((x) => String(x.id) === String(activeColorTodoId));
+        if (t) {
+          t.color = e.target.value;
+          saveData();
+          renderTodos();
+          scheduleSummaryRender();
+          colorPopEl.classList.remove("show");
+        }
+      });
+
+      document.body.appendChild(colorPopEl);
+    }
+
+    document.addEventListener("click", () => {
+      if (colorPopEl) colorPopEl.classList.remove("show");
+    });
+
+    function ensureDetailMenu() {
+      if (detailMenuEl) return;
+      detailMenuEl = document.createElement("div");
+      detailMenuEl.className = "detail-menu";
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "删除";
+      const cutBtn = document.createElement("button");
+      cutBtn.textContent = "剪切";
+      const copyBtn = document.createElement("button");
+      copyBtn.textContent = "复制";
+      detailMenuEl.appendChild(delBtn);
+      detailMenuEl.appendChild(cutBtn);
+      detailMenuEl.appendChild(copyBtn);
+      document.body.appendChild(detailMenuEl);
+
+      const hideMenu = () => {
+        if (detailMenuEl) detailMenuEl.style.display = "none";
+      };
+
+      const getTodoById = () => {
+        const todos = getTodos(state.selectedDate);
+        return todos.find((t) => String(t.id) === String(detailMenuTodoId));
+      };
+
+      delBtn.addEventListener("click", () => {
+        if (detailMenuTarget === "image") {
+          const t = getTodoById();
+          if (t && detailMenuTextarea) {
+            const imgs = Array.from(detailMenuTextarea.querySelectorAll("img"));
+            const img = imgs[detailMenuImageIndex];
+            if (img) img.remove();
+            t.detailHtml = detailMenuTextarea.innerHTML;
+            t.details = detailMenuTextarea.textContent || "";
+            saveData();
+          }
+        } else if (detailMenuTarget === "text" && detailMenuTextarea) {
+          const sel = window.getSelection();
+          if (sel && sel.rangeCount > 0) {
+            sel.getRangeAt(0).deleteContents();
+          } else {
+            detailMenuTextarea.innerHTML = "";
+          }
+          const t = getTodoById();
+          if (t) {
+            t.detailHtml = detailMenuTextarea.innerHTML;
+            t.details = detailMenuTextarea.textContent || "";
+            saveData();
+          }
+        }
+        hideMenu();
+      });
+
+      cutBtn.addEventListener("click", async () => {
+        if (detailMenuTarget === "image") {
+          const t = getTodoById();
+          if (t && detailMenuTextarea) {
+            const imgs = Array.from(detailMenuTextarea.querySelectorAll("img"));
+            const img = imgs[detailMenuImageIndex];
+            if (img) {
+              try { await navigator.clipboard.writeText(img.src || ""); } catch {}
+              img.remove();
+              t.detailHtml = detailMenuTextarea.innerHTML;
+              t.details = detailMenuTextarea.textContent || "";
+              saveData();
+            }
+          }
+        } else if (detailMenuTarget === "text" && detailMenuTextarea) {
+          const sel = window.getSelection();
+          const text = sel && sel.toString ? sel.toString() : "";
+          if (text) {
+            try { await navigator.clipboard.writeText(text); } catch {}
+            sel.getRangeAt(0).deleteContents();
+          } else {
+            try { await navigator.clipboard.writeText(detailMenuTextarea.textContent || ""); } catch {}
+            detailMenuTextarea.innerHTML = "";
+          }
+          const t = getTodoById();
+          if (t) {
+            t.detailHtml = detailMenuTextarea.innerHTML;
+            t.details = detailMenuTextarea.textContent || "";
+            saveData();
+          }
+        }
+        hideMenu();
+      });
+
+      copyBtn.addEventListener("click", async () => {
+        if (detailMenuTarget === "image") {
+          const t = getTodoById();
+          if (t && detailMenuTextarea) {
+            const imgs = Array.from(detailMenuTextarea.querySelectorAll("img"));
+            const img = imgs[detailMenuImageIndex];
+            if (img) {
+              try { await navigator.clipboard.writeText(img.src || ""); } catch {}
+            }
+          }
+        } else if (detailMenuTarget === "text" && detailMenuTextarea) {
+          const sel = window.getSelection();
+          const text = sel && sel.toString ? sel.toString() : "";
+          try { await navigator.clipboard.writeText(text || detailMenuTextarea.textContent || ""); } catch {}
+        }
+        hideMenu();
+      });
+
+      document.addEventListener("click", hideMenu);
+    }
+
+    function ensureImgViewer() {
+      if (imgViewer) return;
+      imgViewer = document.createElement("div");
+      imgViewer.className = "img-viewer";
+      const img = document.createElement("img");
+      imgViewer.appendChild(img);
+      imgViewer.addEventListener("click", () => imgViewer.classList.remove("show"));
+      document.body.appendChild(imgViewer);
+    }
+
+    function getTodos(date) {
+      const key = dateKey(date);
+      if (!state.data[key]) state.data[key] = { todos: [] };
+      return state.data[key].todos;
+    }
+
+    function renderWeekdays() {
+      const el = $("calendar-weekdays");
+      el.innerHTML = weekdayLabels.map((d) => `<div class="weekday">${d}</div>`).join("");
+    }
+
+    function renderMonthSelect() {
+      const monthSelect = $("month-select");
+      monthSelect.innerHTML = monthLabels.map((m, i) => `<option value="${i}">${m}</option>`).join("");
+      monthSelect.value = state.viewDate.getMonth();
+
+      const yearSelect = $("year-select");
+      const year = state.viewDate.getFullYear();
+      const years = [];
+      for (let y = year - 5; y <= year + 5; y++) years.push(y);
+      yearSelect.innerHTML = years.map((y) => `<option value="${y}">${y}年</option>`).join("");
+      yearSelect.value = year;
+    }
+
+    function renderCalendar() {
+      renderMonthSelect();
+      const daysEl = $("calendar-days");
+      daysEl.innerHTML = "";
+      const year = state.viewDate.getFullYear();
+      const month = state.viewDate.getMonth();
+      const first = new Date(year, month, 1);
+      const start = new Date(first);
+      const day = (first.getDay() + 6) % 7;
+      start.setDate(first.getDate() - day);
+
+      for (let i = 0; i < 42; i++) {
+        const current = new Date(start);
+        current.setDate(start.getDate() + i);
+        const isCurrentMonth = current.getMonth() === month;
+        const isToday = dateKey(current) === dateKey(new Date());
+        const isSelected = dateKey(current) === dateKey(state.selectedDate);
+        const key = dateKey(current);
+        const todos = (state.data[key] && state.data[key].todos) ? state.data[key].todos : [];
+        const tag = specialDays[key] || "";
+        const holidayLabel = getHolidayLabel(current);
+        const cell = document.createElement("div");
+        cell.className = "day" + (isCurrentMonth ? "" : " inactive") + (isToday ? " today" : "") + (isSelected ? " selected" : "");
+        cell.dataset.date = key;
+        cell.innerHTML = `<div class="num">${current.getDate()}</div>`;
+        if (tag) {
+          const tagEl = document.createElement("span");
+          tagEl.className = "day-tag " + (tag === "off" ? "off" : "work");
+          tagEl.textContent = tag === "off" ? "休" : "班";
+          cell.appendChild(tagEl);
+        }
+        if (todos.length > 0) {
+          const dot = document.createElement("span");
+          dot.className = "todo-dot";
+          if (todos.every((t) => t.done)) dot.classList.add("done");
+          cell.appendChild(dot);
+        }
+        if (holidayLabel) {
+          const labels = document.createElement("div");
+          labels.className = "festival-labels";
+          const span = document.createElement("span");
+          span.textContent = holidayLabel;
+          labels.appendChild(span);
+          cell.appendChild(labels);
+        }
+        cell.addEventListener("click", () => {
+          state.selectedDate = current;
+          renderCalendar();
+          renderTodos();
+        });
+        daysEl.appendChild(cell);
+      }
+    }
+
+    function priorityColor(priority) {
+      if (priority === "high") return "var(--high)";
+      if (priority === "mid") return "var(--warn)";
+      if (priority === "low") return "var(--good)";
+      return "transparent";
+    }
+
+    function priorityBg(priority) {
+      if (priority === "high") return "rgba(227, 65, 50, 0.18)";
+      if (priority === "mid") return "rgba(255, 138, 0, 0.18)";
+      if (priority === "low") return "rgba(43, 182, 115, 0.18)";
+      return "#f4f2ee";
+    }
+
+    function hexToRgba(hex, alpha) {
+      if (!hex) return "transparent";
+      const value = hex.replace("#", "");
+      if (value.length !== 6) return "transparent";
+      const r = parseInt(value.slice(0, 2), 16);
+      const g = parseInt(value.slice(2, 4), 16);
+      const b = parseInt(value.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    let audioCtx = null;
+    function playDing() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = audioCtx;
+
+        const makeTone = (freq, start, dur, peak) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(freq, start);
+          gain.gain.setValueAtTime(0.0001, start);
+          gain.gain.exponentialRampToValueAtTime(peak, start + 0.008);
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(start);
+          osc.stop(start + dur);
+        };
+
+        const now = ctx.currentTime;
+        makeTone(2000, now, 0.06, 0.22);
+        makeTone(1350, now + 0.07, 0.09, 0.18);
+      } catch (e) {}
+    }
+
+    function renderTodos() {
+      const todos = getTodos(state.selectedDate);
+      const list = $("todo-list");
+      const dateStr = state.selectedDate.toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
+      $("todo-date").textContent = dateStr;
+      list.innerHTML = "";
+
+      if (todos.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        empty.textContent = "暂无待办，添加一个吧";
+        list.appendChild(empty);
+        return;
+      }
+
+      todos.forEach((t, i) => {
+        if (t.order == null) t.order = t.createdAt || (i + 1);
+      });
+
+      const sorted = [...todos].sort((a, b) => {
+        if (a.done === b.done) {
+          const ao = a.order ?? a.createdAt;
+          const bo = b.order ?? b.createdAt;
+          return ao - bo;
+        }
+        return a.done ? 1 : -1;
+      });
+
+      const contextMenu = null;
+      let draggingEl = null;
+      let dragGhost = null;
+      let dragOffsetX = 0;
+      let dragOffsetY = 0;
+      const emptyDragImg = new Image();
+      let draggingAllowed = false;
+
+      const getDragAfterElement = (container, y) => {
+        const els = [...container.querySelectorAll(".todo-item:not(.dragging)")];
+        return els.reduce((closest, child) => {
+          const box = child.getBoundingClientRect();
+          const offset = y - box.top - box.height / 2;
+          if (offset < 0 && offset > closest.offset) {
+            return { offset, element: child };
+          }
+          return closest;
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+      };
+
+      const finalizeOrder = (firstMap) => {
+        const ids = Array.from(list.querySelectorAll(".todo-item")).map((el) => el.dataset.id);
+        ids.forEach((id, idx) => {
+          const t = todos.find((x) => String(x.id) === String(id));
+          if (t) t.order = idx + 1;
+        });
+        saveData();
+        renderTodos();
+        scheduleSummaryRender();
+        const nextList = document.querySelector(".todo-list");
+        if (nextList && firstMap) animateById(nextList, ".todo-item", "data-id", firstMap);
+      };
+
+      list.ondragover = (e) => {
+        e.preventDefault();
+        if (!draggingEl) return;
+        animateReorder(list, ".todo-item:not(.dragging)");
+        const after = getDragAfterElement(list, e.clientY);
+        if (!after) {
+          list.appendChild(draggingEl);
+        } else {
+          list.insertBefore(draggingEl, after);
+        }
+      };
+
+      list.ondrop = (e) => {
+        e.preventDefault();
+        if (draggingEl) finalizeOrder();
+      };
+
+      sorted.forEach((todo) => {
+        const item = document.createElement("div");
+        const hasSubtasks = Array.isArray(todo.subtasks) && todo.subtasks.length > 0;
+        item.className = "todo-item" + (todo.expanded ? " expanded" : "") + (!todo.expanded && !hasSubtasks ? " compact" : "");
+        item.dataset.id = String(todo.id);
+        item.draggable = false;
+        if (todo.color) item.style.background = hexToRgba(todo.color, 0.3);
+
+        const main = document.createElement("div");
+        main.className = "todo-main";
+
+        const check = document.createElement("input");
+        check.type = "checkbox";
+        check.classList.add("todo-check");
+        check.checked = todo.done;
+        check.addEventListener("change", () => {
+          todo.done = check.checked;
+          playDing();
+          check.classList.add("checkbox-pop");
+          setTimeout(() => check.classList.remove("checkbox-pop"), 180);
+          item.classList.add("done-anim");
+          setTimeout(() => item.classList.remove("done-anim"), 650);
+          saveData();
+          renderTodos();
+          scheduleSummaryRender();
+        });
+
+        const bar = document.createElement("div");
+        bar.className = "priority-bar";
+        bar.style.background = priorityColor(todo.priority);
+
+        const title = document.createElement("div");
+        title.className = "todo-title" + (todo.done ? " done" : "");
+        const titleText = document.createElement("span");
+        titleText.className = "todo-title-text";
+        titleText.textContent = todo.title || "未命名事项";
+
+        const inlineDetail = document.createElement("span");
+        inlineDetail.className = "todo-inline-detail";
+        inlineDetail.textContent = (todo.details || "").replace(/\n/g, " ");
+
+        const expand = document.createElement("button");
+        expand.textContent = todo.expanded ? "⌃" : "⌄";
+        expand.style.border = "0";
+        expand.style.background = "transparent";
+        expand.style.cursor = "pointer";
+        expand.style.color = "var(--muted)";
+        expand.className = "expand-btn";
+
+        const priorityBtn = document.createElement("button");
+        priorityBtn.className = "top-action priority";
+        priorityBtn.setAttribute("title", "优先级");
+        const pText = document.createElement("span");
+        pText.textContent = "P";
+        const pTag = document.createElement("span");
+        pTag.className = "priority-tag";
+        pTag.textContent = "无";
+        priorityBtn.appendChild(pText);
+        priorityBtn.appendChild(pTag);
+
+        const colorBtn = document.createElement("button");
+        colorBtn.className = "top-action color";
+        colorBtn.textContent = "🖌️";
+        colorBtn.setAttribute("title", "事项颜色");
+
+        ensureColorPop();
+
+        const moreBtn = document.createElement("button");
+        moreBtn.className = "more-btn";
+        moreBtn.textContent = "⋯";
+        moreBtn.setAttribute("aria-label", "更多操作");
+
+        const setFocused = () => {
+          document.querySelectorAll(".todo-item.focused").forEach((el) => el.classList.remove("focused"));
+          item.classList.add("focused");
+        };
+
+        const focusOnly = () => {
+          document.querySelectorAll(".todo-item.focused").forEach((el) => el.classList.remove("focused"));
+          item.classList.add("focused");
+        };
+
+        main.addEventListener("click", (e) => {
+          if (e.target === check) {
+            focusOnly();
+            return;
+          }
+          if (e.target === expand) {
+            focusOnly();
+            return;
+          }
+          todo.expanded = !todo.expanded;
+          focusOnly();
+          saveData();
+          renderTodos();
+        });
+
+        expand.addEventListener("click", (e) => {
+          e.stopPropagation();
+          todo.expanded = !todo.expanded;
+          expand.textContent = todo.expanded ? "⌃" : "⌄";
+          focusOnly();
+          saveData();
+          renderTodos();
+        });
+
+        moreBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          item.classList.toggle("swipe-open");
+        });
+
+        item.addEventListener("click", (e) => {
+          if (e.target && e.target.closest(".todo-details")) return;
+          focusOnly();
+        });
+
+        title.appendChild(titleText);
+        if (!todo.expanded && inlineDetail.textContent) title.appendChild(inlineDetail);
+
+        const content = document.createElement("div");
+        content.className = "todo-content";
+
+        main.appendChild(check);
+        main.appendChild(bar);
+        main.appendChild(title);
+        main.appendChild(priorityBtn);
+        main.appendChild(colorBtn);
+        main.appendChild(moreBtn);
+        // color pop is global
+
+        const meta = document.createElement("div");
+        meta.className = "todo-meta";
+        if (!todo.expanded && hasSubtasks) {
+          const subItems = (todo.subtasks || []).slice().sort((a, b) => {
+            if (a.done === b.done) return 0;
+            return a.done ? 1 : -1;
+          });
+          const list = document.createElement("div");
+          list.className = "sub-preview";
+          const showAll = !!todo.subPreviewExpanded;
+          const visible = showAll ? subItems : subItems.slice(0, 2);
+          visible.forEach((sub) => {
+            const row = document.createElement("div");
+            row.className = "sub-preview-item" + (sub.done ? " done" : "");
+            const c = document.createElement("input");
+            c.type = "checkbox";
+            c.classList.add("subtask-check");
+            c.checked = sub.done;
+            c.addEventListener("change", () => {
+              sub.done = c.checked;
+              playDing();
+              c.classList.add("checkbox-pop");
+              setTimeout(() => c.classList.remove("checkbox-pop"), 180);
+              saveData();
+              renderTodos();
+              scheduleSummaryRender();
+            });
+            const text = document.createElement("span");
+            text.textContent = sub.text;
+            row.appendChild(c);
+            row.appendChild(text);
+            list.appendChild(row);
+          });
+            if (!showAll && subItems.length > 2) {
+              const more = document.createElement("button");
+              more.className = "sub-preview-item";
+              more.style.border = "0";
+              more.style.background = "transparent";
+              more.style.padding = "0";
+              more.style.textAlign = "left";
+              more.style.cursor = "pointer";
+              more.textContent = "……";
+              more.addEventListener("click", (e) => {
+                e.stopPropagation();
+                todo.subPreviewExpanded = true;
+                saveData();
+                renderTodos();
+              });
+              list.appendChild(more);
+            } else if (showAll && subItems.length > 2) {
+              const less = document.createElement("button");
+              less.className = "sub-preview-item";
+              less.style.border = "0";
+              less.style.background = "transparent";
+              less.style.padding = "0";
+              less.style.textAlign = "left";
+              less.style.cursor = "pointer";
+              less.textContent = "收起";
+              less.addEventListener("click", (e) => {
+                e.stopPropagation();
+                todo.subPreviewExpanded = false;
+                saveData();
+                renderTodos();
+              });
+              list.appendChild(less);
+            }
+            meta.appendChild(list);
+        }
+
+        const details = document.createElement("div");
+        details.className = "todo-details";
+
+        const priorityCycle = ["", "high", "mid", "low"];
+        const priorityTagMap = { "": "无", high: "高", mid: "中", low: "低" };
+        const applyPriority = () => {
+          bar.style.background = priorityColor(todo.priority);
+          pTag.textContent = priorityTagMap[todo.priority || ""] || "无";
+          check.style.borderColor = todo.priority ? priorityColor(todo.priority) : "var(--line)";
+        };
+        applyPriority();
+
+        if (todo.color) {
+          item.style.borderLeftColor = todo.color;
+          item.style.borderLeftWidth = "4px";
+        } else {
+          item.style.borderLeftColor = "var(--line)";
+          item.style.borderLeftWidth = "1px";
+        }
+
+        priorityBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const idx = priorityCycle.indexOf(todo.priority || "");
+          const next = priorityCycle[(idx + 1) % priorityCycle.length];
+          todo.priority = next;
+          applyPriority();
+          saveData();
+          renderTodos();
+          scheduleSummaryRender();
+        });
+
+        colorBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          ensureColorPop();
+          activeColorTodoId = todo.id;
+          const rect = colorBtn.getBoundingClientRect();
+          const popWidth = colorPopEl.offsetWidth || 180;
+          const popHeight = colorPopEl.offsetHeight || 44;
+          const left = Math.max(8, Math.min(window.innerWidth - popWidth - 8, rect.left));
+          const top = Math.min(window.innerHeight - popHeight - 8, rect.bottom + 8);
+          colorPopEl.style.left = `${left}px`;
+          colorPopEl.style.top = `${top}px`;
+          if (colorPopEl.classList.contains("show") && activeColorTodoId === todo.id) {
+            colorPopEl.classList.remove("show");
+          } else {
+            colorPopEl.classList.add("show");
+          }
+        });
+
+        const editorWrap = document.createElement("div");
+        editorWrap.className = "detail-editor";
+
+        const detailArea = document.createElement("div");
+        detailArea.className = "detail-edit";
+        detailArea.contentEditable = "true";
+        detailArea.setAttribute("data-placeholder", "事项详情");
+        detailArea.innerHTML = todo.detailHtml || (todo.details ? escapeHtml(todo.details).replace(/\n/g, "<br>") : "");
+
+        // migrate old images (append once)
+        if (!todo.detailHtml && Array.isArray(todo.detailImages) && todo.detailImages.length > 0) {
+          todo.detailImages.forEach((src) => {
+            const img = document.createElement("img");
+            img.src = src;
+            img.classList.add("clickable");
+            detailArea.appendChild(img);
+          });
+        }
+
+        editorWrap.appendChild(detailArea);
+
+        // auto height on first render
+        setTimeout(() => {
+          detailArea.style.height = "auto";
+          detailArea.style.height = `${detailArea.scrollHeight}px`;
+        }, 0);
+
+        detailArea.addEventListener("paste", (e) => {
+          const items = e.clipboardData && e.clipboardData.items;
+          if (!items) return;
+          const images = Array.from(items).filter((it) => it.type && it.type.startsWith("image/"));
+          if (images.length === 0) return;
+          e.preventDefault();
+          images.forEach((it) => {
+            const file = it.getAsFile();
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+              const img = document.createElement("img");
+              img.src = reader.result;
+              img.classList.add("clickable");
+              insertNodeAtCursor(detailArea, img);
+              todo.detailHtml = detailArea.innerHTML;
+              todo.details = detailArea.textContent || "";
+              saveData();
+            };
+            reader.readAsDataURL(file);
+          });
+        });
+
+        detailArea.addEventListener("input", () => {
+          todo.detailHtml = detailArea.innerHTML;
+          todo.details = detailArea.textContent || "";
+          saveData();
+        });
+
+        ensureDetailMenu();
+        const showDetailMenu = (x, y, target) => {
+          detailMenuTarget = target;
+          detailMenuTodoId = todo.id;
+          detailMenuTextarea = detailArea;
+          detailMenuEl.style.left = `${x}px`;
+          detailMenuEl.style.top = `${y}px`;
+          detailMenuEl.style.display = "block";
+        };
+
+        detailArea.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          showDetailMenu(e.clientX, e.clientY, "text");
+        });
+
+        detailArea.addEventListener("contextmenu", (e) => {
+          const img = e.target && e.target.closest("img");
+          if (!img) return;
+          e.preventDefault();
+          detailMenuImageIndex = Array.from(detailArea.querySelectorAll("img")).indexOf(img);
+          showDetailMenu(e.clientX, e.clientY, "image");
+        });
+
+        detailArea.addEventListener("click", (e) => {
+          const img = e.target && e.target.closest("img");
+          if (!img) return;
+          ensureImgViewer();
+          const viewerImg = imgViewer.querySelector("img");
+          viewerImg.src = img.src;
+          imgViewer.classList.add("show");
+        });
+
+        const subtasks = document.createElement("div");
+        subtasks.className = "subtasks";
+        let subDragging = null;
+        let subDraggingActive = false;
+        let subGhost = null;
+        let subOffsetX = 0;
+        let subOffsetY = 0;
+        const subAfterEl = (container, y) => {
+          const els = [...container.querySelectorAll(".subtask:not(.dragging)")];
+          return els.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+              return { offset, element: child };
+            }
+            return closest;
+          }, { offset: Number.NEGATIVE_INFINITY }).element;
+        };
+
+        const finalizeSubOrder = (firstMap) => {
+          const ordered = Array.from(subtasks.querySelectorAll(".subtask")).map((el) => el.dataset.subId);
+          const newList = [];
+          ordered.forEach((idx) => {
+            const original = todo.subtasks.find((s) => String(s.id) === String(idx));
+            if (original) newList.push(original);
+          });
+          todo.subtasks = newList;
+          saveData();
+          renderTodos();
+          scheduleSummaryRender();
+          if (firstMap) {
+            const todoEl = document.querySelector(`.todo-item[data-id="${todo.id}"]`);
+            const subList = todoEl ? todoEl.querySelector(".subtasks") : null;
+            if (subList) animateById(subList, ".subtask", "data-sub-id", firstMap);
+          }
+        };
+
+        const onSubMove = (clientX, clientY) => {
+          if (!subDraggingActive || !subDragging) return;
+          if (subGhost) {
+            subGhost.style.transform = `translate(${clientX - subOffsetX}px, ${clientY - subOffsetY}px)`;
+          }
+          const after = subAfterEl(subtasks, clientY);
+          if (!after) {
+            subtasks.appendChild(subDragging);
+          } else {
+            subtasks.insertBefore(subDragging, after);
+          }
+        };
+
+        const onSubEnd = () => {
+          if (!subDraggingActive) return;
+          const firstMap = capturePositionsById(subtasks, ".subtask", "data-sub-id");
+          subDraggingActive = false;
+          if (subDragging) subDragging.classList.remove("dragging");
+          if (subDragging) subDragging.classList.remove("drag-ready");
+          if (subDragging) {
+            const c = subDragging.querySelector(".subtask-content");
+            if (c) {
+              c.style.opacity = "";
+              c.style.background = "";
+            }
+          }
+          subDragging = null;
+          if (subGhost && subGhost.parentNode) subGhost.parentNode.removeChild(subGhost);
+          subGhost = null;
+          document.body.classList.remove("dragging");
+          finalizeSubOrder(firstMap);
+          document.removeEventListener("pointermove", onSubPointerMove);
+          document.removeEventListener("pointerup", onSubPointerUp);
+          document.removeEventListener("pointercancel", onSubPointerUp);
+        };
+        const onSubPointerMove = (e) => onSubMove(e.clientX, e.clientY);
+        const onSubPointerUp = () => onSubEnd();
+        (todo.subtasks || []).forEach((sub, index) => {
+          if (!sub.id) {
+            sub.id = Date.now() + Math.random();
+            saveData();
+          }
+          const row = document.createElement("div");
+          row.className = "subtask subtask-row" + (sub.done ? " done" : "");
+          row.dataset.subId = String(sub.id);
+          row.setAttribute("draggable", "false");
+
+          const content = document.createElement("div");
+          content.className = "subtask-content";
+
+          const c = document.createElement("input");
+          c.type = "checkbox";
+          c.classList.add("subtask-check");
+          c.checked = sub.done;
+          c.addEventListener("change", () => {
+            sub.done = c.checked;
+            playDing();
+            c.classList.add("checkbox-pop");
+            setTimeout(() => c.classList.remove("checkbox-pop"), 180);
+            row.classList.add("done-anim");
+            setTimeout(() => row.classList.remove("done-anim"), 650);
+            saveData();
+            renderTodos();
+            scheduleSummaryRender();
+          });
+          const text = document.createElement("span");
+          text.textContent = sub.text;
+          const moreBtn = document.createElement("button");
+          moreBtn.className = "more-btn";
+          moreBtn.textContent = "⋯";
+          moreBtn.setAttribute("aria-label", "更多操作");
+
+          content.appendChild(c);
+          content.appendChild(text);
+          content.appendChild(moreBtn);
+          const actions = document.createElement("div");
+          actions.className = "subtask-actions";
+          const delBtn = document.createElement("button");
+          delBtn.className = "swipe-btn delete";
+          delBtn.textContent = "删除";
+          const cancelBtn = document.createElement("button");
+          cancelBtn.className = "swipe-btn cancel";
+          cancelBtn.textContent = "取消";
+          actions.appendChild(delBtn);
+          actions.appendChild(cancelBtn);
+          const subSwipe = document.createElement("div");
+          subSwipe.className = "subtask-swipe";
+          subSwipe.appendChild(content);
+          subSwipe.appendChild(actions);
+          row.appendChild(subSwipe);
+          subtasks.appendChild(row);
+
+          let subSwipeStart = 0;
+          let subSwipeEnd = 0;
+          let subSwipeActive = false;
+          const subApply = (dx) => {
+            const resisted = dx * 0.7;
+            const clamped = Math.max(Math.min(resisted, 0), -100);
+            subSwipe.classList.add("swipe-live");
+            subSwipe.style.transform = `translateX(${clamped}px)`;
+          };
+          const subRelease = (dx) => {
+            subSwipe.classList.remove("swipe-live");
+            subSwipe.classList.add("swipe-release");
+            if (row.classList.contains("swipe-open")) {
+              // keep open unless user taps cancel
+            } else if (dx < -65) {
+              row.classList.add("swipe-open");
+            } else {
+              row.classList.remove("swipe-open");
+            }
+            subSwipe.style.transform = "";
+            setTimeout(() => {
+              subSwipe.classList.remove("swipe-release");
+            }, 420);
+          };
+          const subSwipeEnabled = false;
+          const subStart = (x) => {
+            if (!subSwipeEnabled) return;
+            if (row.classList.contains("swipe-open")) return;
+            subSwipeStart = x;
+            subSwipeActive = true;
+          };
+          const subMove = (x) => {
+            if (!subSwipeEnabled) return;
+            if (!subSwipeActive) return;
+            subSwipeEnd = x;
+            const dx = subSwipeEnd - subSwipeStart;
+            if (dx > 0) return; // ignore right-swipe feedback
+            subApply(dx);
+          };
+          const subEnd = () => {
+            if (!subSwipeEnabled) return;
+            if (!subSwipeActive) return;
+            subSwipeActive = false;
+            const dx = subSwipeEnd - subSwipeStart;
+            if (dx > 0) return; // ignore right-swipe release
+            subRelease(dx);
+          };
+          row.addEventListener("touchstart", (e) => subStart(e.touches[0].clientX));
+          row.addEventListener("touchmove", (e) => subMove(e.touches[0].clientX));
+          row.addEventListener("touchend", subEnd);
+          row.addEventListener("mousedown", (e) => subStart(e.clientX));
+          row.addEventListener("mousemove", (e) => subMove(e.clientX));
+          row.addEventListener("mouseup", subEnd);
+
+          delBtn.addEventListener("click", () => {
+            if (Array.isArray(todo.subtasks)) {
+              todo.subtasks.splice(index, 1);
+              saveData();
+              renderTodos();
+              scheduleSummaryRender();
+            }
+          });
+          cancelBtn.addEventListener("click", () => {
+            row.classList.remove("swipe-open");
+          });
+          moreBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            row.classList.toggle("swipe-open");
+          });
+
+          let subPressTimer = null;
+          let subPressStartX = 0;
+          let subPressStartY = 0;
+          let subLongPressReady = false;
+          const subPressThreshold = 6;
+          const subPressDelay = 260;
+
+          const subStartPress = (x, y, target) => {
+            if (target.closest("input,textarea,select,button")) return;
+            subPressStartX = x;
+            subPressStartY = y;
+            subPressTimer = setTimeout(() => {
+              subDragging = row;
+              subDraggingActive = true;
+              subLongPressReady = true;
+              row.classList.add("dragging");
+              row.classList.add("drag-ready");
+              content.style.opacity = "0.45";
+              content.style.background = "rgba(255,255,255,0.35)";
+              document.body.classList.add("dragging");
+              const rect = row.getBoundingClientRect();
+              subOffsetX = x - rect.left;
+              subOffsetY = y - rect.top;
+              subGhost = row.cloneNode(true);
+              subGhost.classList.remove("dragging");
+              subGhost.classList.add("drag-ghost");
+              subGhost.style.width = `${rect.width}px`;
+              subGhost.style.height = `${rect.height}px`;
+              subGhost.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
+              document.body.appendChild(subGhost);
+              document.addEventListener("pointermove", onSubPointerMove);
+              document.addEventListener("pointerup", onSubPointerUp);
+              document.addEventListener("pointercancel", onSubPointerUp);
+            }, subPressDelay);
+          };
+
+          const subMovePress = (x, y) => {
+            if (!subPressTimer) return;
+            const dx = x - subPressStartX;
+            const dy = y - subPressStartY;
+            if (Math.hypot(dx, dy) > subPressThreshold) {
+              clearTimeout(subPressTimer);
+              subPressTimer = null;
+            }
+          };
+
+          const subEndPress = () => {
+            if (subPressTimer) {
+              clearTimeout(subPressTimer);
+              subPressTimer = null;
+            }
+            if (subLongPressReady && !subDraggingActive) {
+              row.classList.remove("dragging");
+              row.classList.remove("drag-ready");
+              content.style.opacity = "";
+              content.style.background = "";
+              subLongPressReady = false;
+            }
+          };
+
+          row.addEventListener("pointerdown", (e) => {
+            if (e.button !== 0) return;
+            subStartPress(e.clientX, e.clientY, e.target);
+          });
+          row.addEventListener("pointermove", (e) => {
+            if (subDraggingActive) return;
+            subMovePress(e.clientX, e.clientY);
+          });
+          row.addEventListener("pointerup", subEndPress);
+          row.addEventListener("pointercancel", subEndPress);
+          row.addEventListener("pointerleave", subEndPress);
+        });
+
+        const subInput = document.createElement("div");
+        subInput.className = "subtask-input";
+        subInput.innerHTML = `
+          <input type="text" placeholder="添加子事项，回车确认" />
+        `;
+        const subInputField = subInput.querySelector("input");
+        subInputField.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && e.target.value.trim()) {
+            const text = e.target.value.trim();
+            todo.subtasks = todo.subtasks || [];
+            todo.subtasks.push({ text, done: false });
+            e.target.value = "";
+            saveData();
+            renderTodos();
+            scheduleSummaryRender();
+          }
+        });
+
+        details.appendChild(editorWrap);
+        details.appendChild(subtasks);
+        details.appendChild(subInput);
+
+        const actions = document.createElement("div");
+        actions.className = "swipe-actions";
+        const delBtn = document.createElement("button");
+        delBtn.className = "swipe-btn delete";
+        delBtn.textContent = "删除";
+        const cancelBtn = document.createElement("button");
+        cancelBtn.className = "swipe-btn cancel";
+        cancelBtn.textContent = "取消";
+        actions.appendChild(delBtn);
+        actions.appendChild(cancelBtn);
+        const footer = document.createElement("div");
+        footer.className = "todo-footer";
+        footer.appendChild(expand);
+
+        const swipeRow = document.createElement("div");
+        swipeRow.className = "swipe-row";
+        content.appendChild(main);
+        if (!todo.expanded && hasSubtasks) content.appendChild(meta);
+        content.appendChild(details);
+        content.appendChild(footer);
+        swipeRow.appendChild(content);
+        swipeRow.appendChild(actions);
+        item.appendChild(swipeRow);
+        list.appendChild(item);
+
+        let swipeStartX = 0;
+        let swipeEndX = 0;
+        let swipeActive = false;
+        const applySwipe = (dx) => {
+          const resisted = dx * 0.7;
+          const clamped = Math.max(Math.min(resisted, 0), -120);
+          swipeRow.classList.add("swipe-live");
+          swipeRow.style.transform = `translateX(${clamped}px)`;
+        };
+        const releaseSwipe = (dx) => {
+          swipeRow.classList.remove("swipe-live");
+          swipeRow.classList.add("swipe-release");
+          if (item.classList.contains("swipe-open")) {
+            // keep open unless user taps cancel
+          } else if (dx < -75) {
+            item.classList.add("swipe-open");
+          } else {
+            item.classList.remove("swipe-open");
+          }
+          swipeRow.style.transform = "";
+          setTimeout(() => {
+            swipeRow.classList.remove("swipe-release");
+          }, 420);
+        };
+        const swipeEnabled = false;
+        const onSwipeStart = (x) => {
+          if (!swipeEnabled) return;
+          if (todo.expanded) return;
+          if (item.classList.contains("swipe-open")) return;
+          swipeStartX = x;
+          swipeActive = true;
+        };
+        const onSwipeMove = (x) => {
+          if (!swipeEnabled) return;
+          if (todo.expanded) return;
+          if (!swipeActive) return;
+          swipeEndX = x;
+          const dx = swipeEndX - swipeStartX;
+          if (dx > 0) return; // ignore right-swipe feedback
+          applySwipe(dx);
+        };
+        const onSwipeEnd = () => {
+          if (!swipeEnabled) return;
+          if (todo.expanded) return;
+          if (!swipeActive) return;
+          swipeActive = false;
+          const dx = swipeEndX - swipeStartX;
+          if (dx > 0) return; // ignore right-swipe release
+          releaseSwipe(dx);
+        };
+        item.addEventListener("touchstart", (e) => onSwipeStart(e.touches[0].clientX));
+        item.addEventListener("touchmove", (e) => onSwipeMove(e.touches[0].clientX));
+        item.addEventListener("touchend", onSwipeEnd);
+        item.addEventListener("mousedown", (e) => onSwipeStart(e.clientX));
+        item.addEventListener("mousemove", (e) => onSwipeMove(e.clientX));
+        item.addEventListener("mouseup", onSwipeEnd);
+
+        delBtn.addEventListener("click", () => {
+          const idx = todos.findIndex((t) => t.id === todo.id);
+          if (idx >= 0) todos.splice(idx, 1);
+          saveData();
+          renderTodos();
+          scheduleSummaryRender();
+        });
+        cancelBtn.addEventListener("click", () => {
+          item.classList.remove("swipe-open");
+        });
+
+        let pressTimer = null;
+        let pressStartX = 0;
+        let pressStartY = 0;
+        let longPressReady = false;
+        let dragStartTimer = null;
+        const pressThreshold = 6;
+        const pressDelay = 280;
+
+        const startPress = (x, y, target) => {
+          if (target.closest("input,textarea,select,button,.todo-details,.subtask-input")) return;
+          pressStartX = x;
+          pressStartY = y;
+          pressTimer = setTimeout(() => {
+            draggingAllowed = true;
+            longPressReady = true;
+            item.classList.add("drag-ready");
+          }, pressDelay);
+        };
+
+        const movePress = (x, y) => {
+          if (!pressTimer) return;
+          const dx = x - pressStartX;
+          const dy = y - pressStartY;
+          if (Math.hypot(dx, dy) > pressThreshold) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+            if (dragStartTimer) {
+              clearTimeout(dragStartTimer);
+              dragStartTimer = null;
+            }
+          }
+        };
+
+        const endPress = () => {
+          if (pressTimer) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+          }
+          if (dragStartTimer) {
+            clearTimeout(dragStartTimer);
+            dragStartTimer = null;
+          }
+          if (longPressReady && !draggingEl) {
+            draggingAllowed = false;
+            longPressReady = false;
+            item.classList.remove("drag-ready");
+          }
+        };
+        item.addEventListener("pointermove", (e) => {
+          if (draggingEl) return;
+          movePress(e.clientX, e.clientY);
+        });
+        item.addEventListener("pointerup", () => {
+          if (draggingEl) return;
+          endPress();
+        });
+        item.addEventListener("pointercancel", endPress);
+        item.addEventListener("pointerleave", endPress);
+
+        const updateGhost = (x, y) => {
+          if (!dragGhost) return;
+          dragGhost.style.transform = `translate(${x - dragOffsetX}px, ${y - dragOffsetY}px)`;
+        };
+
+        const cleanupGhost = () => {
+          if (dragGhost && dragGhost.parentNode) dragGhost.parentNode.removeChild(dragGhost);
+          dragGhost = null;
+        };
+
+        const beginDrag = (x, y) => {
+          if (!draggingAllowed) return;
+          item.classList.add("dragging");
+          draggingEl = item;
+          item.classList.remove("drag-ready");
+          document.body.classList.add("dragging");
+          const rect = item.getBoundingClientRect();
+          dragOffsetX = x - rect.left;
+          dragOffsetY = y - rect.top;
+          dragGhost = item.cloneNode(true);
+          dragGhost.classList.remove("dragging");
+          dragGhost.classList.add("drag-ghost");
+          dragGhost.style.width = `${rect.width}px`;
+          dragGhost.style.height = `${rect.height}px`;
+          dragGhost.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
+          document.body.appendChild(dragGhost);
+          updateGhost(x, y);
+        };
+
+        const onPointerMove = (e) => {
+          if (!draggingEl) return;
+          updateGhost(e.clientX, e.clientY);
+          const after = getDragAfterElement(list, e.clientY);
+          if (!after) {
+            list.appendChild(draggingEl);
+          } else {
+            list.insertBefore(draggingEl, after);
+          }
+        };
+
+        const endDrag = () => {
+          if (!draggingEl) return;
+          const firstMap = capturePositionsById(list, ".todo-item", "data-id");
+          item.classList.remove("dragging");
+          draggingEl = null;
+          draggingAllowed = false;
+          longPressReady = false;
+          item.classList.remove("drag-ready");
+          document.body.classList.remove("dragging");
+          cleanupGhost();
+          finalizeOrder(firstMap);
+          document.removeEventListener("pointermove", onPointerMove);
+          document.removeEventListener("pointerup", endDrag);
+          document.removeEventListener("pointercancel", endDrag);
+        };
+
+        item.addEventListener("pointerdown", (e) => {
+          if (e.button !== 0) return;
+          startPress(e.clientX, e.clientY, e.target);
+          dragStartTimer = setTimeout(() => {
+            if (!draggingAllowed) return;
+            beginDrag(e.clientX, e.clientY);
+            document.addEventListener("pointermove", onPointerMove);
+            document.addEventListener("pointerup", endDrag);
+            document.addEventListener("pointercancel", endDrag);
+            clearTimeout(dragStartTimer);
+            dragStartTimer = null;
+          }, pressDelay + 10);
+        });
+      });
+    }
+
+    function addTodo() {
+      const input = $("todo-input");
+      const title = input.value.trim();
+      if (!title) return;
+      const todos = getTodos(state.selectedDate);
+      todos.push({
+        id: Date.now(),
+        title,
+        done: false,
+        priority: "",
+        details: "",
+        color: "",
+        subtasks: [],
+        expanded: false,
+        createdAt: Date.now()
+      });
+      input.value = "";
+      saveData();
+      renderTodos();
+      scheduleSummaryRender();
+    }
+
+    function renderSummaryWeekdays() {
+      const el = $("summary-weekdays");
+      el.innerHTML = weekdayLabels.map((d) => `<div class="summary-weekday">${d}</div>`).join("");
+    }
+
+    function updateSummaryTitle() {
+      const y = state.viewDate.getFullYear();
+      const m = state.viewDate.getMonth() + 1;
+      $("summary-title").textContent = `${y}年${m}月`;
+    }
+
+    let summaryRaf = null;
+    function scheduleSummaryRender() {
+      if (summaryRaf) return;
+      summaryRaf = requestAnimationFrame(() => {
+        summaryRaf = null;
+        renderSummary();
+      });
+    }
+
+    function capturePositionsById(container, selector, idAttr) {
+      const items = Array.from(container.querySelectorAll(selector));
+      const first = new Map();
+      items.forEach((el) => {
+        const id = el.getAttribute(idAttr);
+        if (id) first.set(id, el.getBoundingClientRect());
+      });
+      return first;
+    }
+
+    function animateById(container, selector, idAttr, first) {
+      if (!first || first.size === 0) return;
+      const items = Array.from(container.querySelectorAll(selector));
+      requestAnimationFrame(() => {
+        items.forEach((el) => {
+          const id = el.getAttribute(idAttr);
+          if (!id) return;
+          const prev = first.get(id);
+          if (!prev) return;
+          const last = el.getBoundingClientRect();
+          const dx = prev.left - last.left;
+          const dy = prev.top - last.top;
+          if (dx || dy) {
+            el.classList.add("animating");
+            el.style.transform = `translate(${dx}px, ${dy}px)`;
+            requestAnimationFrame(() => {
+              el.style.transform = "";
+              setTimeout(() => el.classList.remove("animating"), 100040);
+            });
+          }
+        });
+      });
+    }
+
+    function renderSummary() {
+      updateSummaryTitle();
+      renderSummaryWeekdays();
+      const daysEl = $("summary-days");
+      daysEl.innerHTML = "";
+      const viewDate = new Date(state.viewDate);
+
+      let dates = [];
+      if (state.mode === "month") {
+        const first = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+        const start = new Date(first);
+        const day = (first.getDay() + 6) % 7;
+        start.setDate(first.getDate() - day);
+        for (let i = 0; i < 42; i++) {
+          const d = new Date(start);
+          d.setDate(start.getDate() + i);
+          dates.push(d);
+        }
+      } else {
+        const current = new Date(state.selectedDate);
+        const day = (current.getDay() + 6) % 7;
+        const start = new Date(current);
+        start.setDate(current.getDate() - day);
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(start);
+          d.setDate(start.getDate() + i);
+          dates.push(d);
+        }
+      }
+
+      dates.forEach((d) => {
+        const key = dateKey(d);
+        const todos = (state.data[key] && state.data[key].todos) ? state.data[key].todos : [];
+        const isCurrentMonth = d.getMonth() === viewDate.getMonth();
+        const isToday = dateKey(d) === dateKey(new Date());
+
+        const cell = document.createElement("div");
+        cell.className = "summary-cell" + (isCurrentMonth ? "" : " inactive") + (isToday ? " today" : "");
+        cell.addEventListener("click", () => {
+          state.selectedDate = d;
+          state.viewDate = new Date(d);
+          setActiveView("day");
+          renderCalendar();
+          renderTodos();
+        });
+
+        const dateRow = document.createElement("div");
+        dateRow.className = "summary-date";
+        dateRow.innerHTML = `<span class="num">${d.getDate()}</span>`;
+        cell.appendChild(dateRow);
+
+        const taskList = document.createElement("div");
+        taskList.className = "summary-tasks";
+        if (todos.length > 0) {
+          todos.forEach((t) => {
+            const pill = document.createElement("div");
+            pill.className = "summary-pill" + (t.done ? " done" : "");
+            pill.style.background = t.color ? hexToRgba(t.color, 0.2) : "#f2f3f5";
+            const box = document.createElement("span");
+            box.className = "box";
+            box.style.background = t.color ? hexToRgba(t.color, 0.6) : "#cfd4dd";
+            pill.appendChild(box);
+            const text = document.createElement("span");
+            text.textContent = t.title;
+            pill.appendChild(text);
+            taskList.appendChild(pill);
+          });
+        }
+
+        cell.appendChild(taskList);
+
+        const holidayLabel = getHolidayLabel(d);
+        if (holidayLabel) {
+          const fest = document.createElement("div");
+          fest.className = "summary-festivals";
+          const span = document.createElement("span");
+          span.textContent = holidayLabel;
+          fest.appendChild(span);
+          cell.appendChild(fest);
+        }
+        daysEl.appendChild(cell);
+      });
+    }
+
+    function setActiveView(view) {
+      document.querySelectorAll(".tab").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.tab === view);
+      });
+      document.querySelectorAll(".view").forEach((el) => {
+        el.classList.toggle("active", el.id === `view-${view}`);
+      });
+    }
+
+    function bindEvents() {
+      $("prev-month").addEventListener("click", () => {
+        state.viewDate.setMonth(state.viewDate.getMonth() - 1);
+        renderCalendar();
+        scheduleSummaryRender();
+      });
+      $("next-month").addEventListener("click", () => {
+        state.viewDate.setMonth(state.viewDate.getMonth() + 1);
+        renderCalendar();
+        scheduleSummaryRender();
+      });
+      $("go-today").addEventListener("click", () => {
+        const today = new Date();
+        state.viewDate = new Date(today);
+        state.selectedDate = new Date(today);
+        renderCalendar();
+        renderTodos();
+        scheduleSummaryRender();
+      });
+      $("month-select").addEventListener("change", (e) => {
+        state.viewDate.setMonth(parseInt(e.target.value, 10));
+        renderCalendar();
+        scheduleSummaryRender();
+      });
+      $("year-select").addEventListener("change", (e) => {
+        state.viewDate.setFullYear(parseInt(e.target.value, 10));
+        renderCalendar();
+        scheduleSummaryRender();
+      });
+      $("clear-completed").addEventListener("click", () => {
+        const todos = getTodos(state.selectedDate);
+        const remaining = todos.filter((t) => !t.done);
+        if (remaining.length !== todos.length) {
+          state.data[dateKey(state.selectedDate)].todos = remaining;
+          saveData();
+          renderTodos();
+          scheduleSummaryRender();
+        }
+      });
+      $("summary-prev").addEventListener("click", () => {
+        if (state.mode === "week") {
+          state.viewDate.setDate(state.viewDate.getDate() - 7);
+          state.selectedDate = new Date(state.viewDate);
+        } else {
+          state.viewDate.setMonth(state.viewDate.getMonth() - 1);
+        }
+        renderCalendar();
+        scheduleSummaryRender();
+      });
+      $("summary-next").addEventListener("click", () => {
+        if (state.mode === "week") {
+          state.viewDate.setDate(state.viewDate.getDate() + 7);
+          state.selectedDate = new Date(state.viewDate);
+        } else {
+          state.viewDate.setMonth(state.viewDate.getMonth() + 1);
+        }
+        renderCalendar();
+        scheduleSummaryRender();
+      });
+      $("summary-today").addEventListener("click", () => {
+        const today = new Date();
+        state.viewDate = new Date(today);
+        state.selectedDate = new Date(today);
+        renderCalendar();
+        renderTodos();
+        scheduleSummaryRender();
+      });
+      $("todo-add-btn").addEventListener("click", addTodo);
+      $("todo-input").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") addTodo();
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          const focused = document.querySelector(".todo-item.focused");
+          if (!focused) return;
+          const id = focused.dataset.id;
+          const todos = getTodos(state.selectedDate);
+          const t = todos.find((x) => String(x.id) === String(id));
+          if (t && t.expanded) {
+            t.expanded = false;
+            saveData();
+            renderTodos();
+          }
+        }
+      });
+
+      document.querySelectorAll(".tab").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          setActiveView(btn.dataset.tab);
+        });
+      });
+
+      $("summary-month").addEventListener("click", () => {
+        state.mode = "month";
+        $("summary-month").classList.add("active");
+        $("summary-week").classList.remove("active");
+        scheduleSummaryRender();
+      });
+
+      $("summary-week").addEventListener("click", () => {
+        state.mode = "week";
+        $("summary-week").classList.add("active");
+        $("summary-month").classList.remove("active");
+        scheduleSummaryRender();
+      });
+    }
+
+    function init() {
+      loadData();
+      renderWeekdays();
+      renderCalendar();
+      try {
+        renderTodos();
+        scheduleSummaryRender();
+        bindEvents();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
