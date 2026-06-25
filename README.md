@@ -22,4 +22,4 @@
 - 通过实际调试前端渲染与状态管理问题，强化了问题拆解能力（展示层/数据层分层定位）。
 
 ## 使用教程视频
-[点击观看](https://youtu.be/bXa0f-KROul)
+[点击观看](https://youtu.be/bXa0f-KROuI)
